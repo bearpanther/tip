@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=7,IE=9" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no"/>
+    <title>BearPanther.com | A Simple Map Tip</title>
+    <link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/dojo/dijit/themes/nihilo/nihilo.css">
+    <link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/esri/css/esri.css">
+    <link rel="stylesheet" href="bearpanther/css/tip.css">
+    <style>
+      html, body { 
+        height: 100%; 
+        margin: 0;
+        padding: 0;
+        width: 100%; 
+      }
+      #map { 
+        height: 100%;
+      }
+    </style>
+    <script>
+      var dojoConfig = { 
+        packages: [{
+          "name": "bearpanther",
+          "location": location.pathname.replace(/\/[^/]+$/, '') + "/bearpanther"
+        }] 
+      };
+    </script>
+    <script src="http://serverapi.arcgisonline.com/jsapi/arcgis/?v=3.2"></script>
+    <script>
+      require([
+        "esri/Map", 
+        "esri/layers/FeatureLayer", 
+        "bearpanther/tip",
+        "dojo/_base/Color",
+        "dojo/_base/connect", 
+        "dojo/dom-construct", 
+        "dojo/domReady!"], 
+      function(Map, FeatureLayer, tip, Color, conn, construct) {
+        // aliases for various esri namespaces/constructors
+        var eg = esri.geometry;
+        var el = esri.layers;
+        var er = esri.renderer;
+        var es = esri.symbol;
+        var sfs = es.SimpleFillSymbol;
+        var sls = es.SimpleLineSymbol;
+
+        var ext = new eg.Extent({"xmin":-9285372,"ymin":3797892,"xmax":-8735026,"ymax":4164790,"spatialReference":{"wkid":102100}});
+        window.map = new esri.Map("map", { extent: ext });
+        conn.connect(window, "resize", map, map.resize);
+        var baseMap = new el.ArcGISTiledMapServiceLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer");
+        map.addLayer(baseMap);
+        var featureLayer = new FeatureLayer("http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Demographics/ESRI_Census_USA/MapServer/3",{
+          mode: el.FeatureLayer.MODE_ONDEMAND,
+          outFields: ["*"]
+        });
+        featureLayer.setDefinitionExpression("STATE_NAME = 'South Carolina'");
+        var renderer = new er.SimpleRenderer(
+          new sfs(
+            "solid", 
+            new sls("solid", new Color([255,255,255,0.35]), 1), 
+            new Color([125,125,125,0.35])
+          )
+        );
+        featureLayer.setRenderer(renderer);
+        map.addLayer(featureLayer);
+
+        // format is used with dojo/string.substitute
+        // placeholders specified by ${some-name} need to match 
+        // attribute fields of the associated layer
+        var format = "${NAME} County"
+          + "<br/><b>2000 Population: </b>${POP2000}"
+          + "<br/><b>2000 Population per Sq. Mi.: </b>${POP00_SQMI}" 
+          + "<br/><b>2007 Population: </b>${POP2007}"
+          + "<br/><b>2007 Population per Sq. Mi.: </b>${POP07_SQMI}";
+        window.tip = new tip({
+          "format": format,
+          "node": window.map.root
+        });
+
+        conn.connect(featureLayer, "onLoad", function(fl) {
+          conn.connect(fl, "onMouseOver", window.tip, window.tip.showInfo);
+          conn.connect(fl, "onMouseOut", window.tip, window.tip.hideInfo);
+        });
+      });
+  </script>
+
+</head>
+
+<body class="nihilo">
+  <div id="map"></div>
+</body>
+
+</html>
